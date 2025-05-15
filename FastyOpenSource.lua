@@ -1,555 +1,393 @@
---[[
-    FastyUI - Легкая и красивая библиотека UI для Roblox
-    Версия 1.0
-]]
-
-local FastyUI = {}
-FastyUI.__index = FastyUI
-
--- Сервисы
+local FastyUi = {}
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
--- Цвета и стили
-local Colors = {
-    Background = Color3.fromRGB(25, 25, 25),
-    Header = Color3.fromRGB(20, 20, 20),
-    TabBar = Color3.fromRGB(30, 30, 30),
-    ActiveTab = Color3.fromRGB(40, 40, 40),
-    Text = Color3.fromRGB(220, 220, 220),
-    Accent = Color3.fromRGB(0, 150, 255),
-    Button = Color3.fromRGB(40, 40, 40),
-    ButtonHover = Color3.fromRGB(50, 50, 50),
-    SliderTrack = Color3.fromRGB(60, 60, 60),
-    SliderFill = Color3.fromRGB(0, 150, 255),
-    ToggleOn = Color3.fromRGB(0, 200, 0),
-    ToggleOff = Color3.fromRGB(200, 0, 0),
-    Checkbox = Color3.fromRGB(50, 50, 50),
-    CheckboxChecked = Color3.fromRGB(0, 200, 0),
-    Dropdown = Color3.fromRGB(40, 40, 40),
-    DropdownHover = Color3.fromRGB(50, 50, 50)
+-- Настройки стилей по умолчанию
+local DefaultStyle = {
+	BackgroundColor = Color3.fromRGB(30, 30, 30),
+	AccentColor = Color3.fromRGB(0, 170, 255),
+	TextColor = Color3.fromRGB(255, 255, 255),
+	CornerRadius = UDim.new(0, 8),
+	ShadowTransparency = 0.5,
+	Font = Enum.Font.Gotham,
+	AnimationSpeed = 0.3
 }
 
--- Анимации
-local TweenInfo = {
-    Fast = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    Normal = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    Slow = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-}
-
--- Вспомогательные функции
-local function CreateFrame(parent, size, position, bgColor, transparency)
-    local frame = Instance.new("Frame")
-    frame.Size = size
-    frame.Position = position
-    frame.BackgroundColor3 = bgColor or Colors.Background
-    frame.BackgroundTransparency = transparency or 0
-    frame.BorderSizePixel = 0
-    frame.Parent = parent
-    return frame
+-- Вспомогательная функция для создания анимаций
+local function createTween(instance, properties, duration, easingStyle)
+	local tweenInfo = TweenInfo.new(duration, easingStyle or Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	local tween = TweenService:Create(instance, tweenInfo, properties)
+	tween:Play()
+	return tween
 end
 
-local function CreateLabel(parent, text, size, position)
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Size = size
-    label.Position = position
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Colors.Text
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 12
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = parent
-    return label
+-- Основной класс библиотеки
+FastyUi.__index = FastyUi
+
+function FastyUi.new()
+	local self = setmetatable({}, FastyUi)
+	self.ScreenGui = Instance.new("ScreenGui")
+	self.ScreenGui.Name = "FastyUi"
+	self.ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+	self.ScreenGui.ResetOnSpawn = false
+	return self
 end
 
--- Основные функции библиотеки
-function FastyUI.New(name)
-    local self = setmetatable({}, FastyUI)
-    
-    -- Создаем основной GUI
-    self.ScreenGui = Instance.new("ScreenGui")
-    self.ScreenGui.Name = name or "FastyUI"
-    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    self.ScreenGui.Parent = game.CoreGui
-    
-    self.Windows = {}
-    self.Elements = {}
-    
-    return self
+-- Создание окна
+function FastyUi:CreateWindow(title, size)
+	local window = Instance.new("Frame")
+	window.Size = size or UDim2.new(0, 400, 0, 300)
+	window.Position = UDim2.new(0.5, -200, 0.5, -150)
+	window.BackgroundColor3 = DefaultStyle.BackgroundColor
+	window.BorderSizePixel = 0
+	window.Parent = self.ScreenGui
+	window.ClipsDescendants = true
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = DefaultStyle.CornerRadius
+	corner.Parent = window
+
+	local shadow = Instance.new("ImageLabel")
+	shadow.Image = "rbxassetid://1316045217"
+	shadow.ImageTransparency = DefaultStyle.ShadowTransparency
+	shadow.BackgroundTransparency = 1
+	shadow.Size = UDim2.new(1, 10, 1, 10)
+	shadow.Position = UDim2.new(0, -5, 0, -5)
+	shadow.ZIndex = -1
+	shadow.Parent = window
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Text = title or "FastyUi"
+	titleLabel.Size = UDim2.new(1, 0, 0, 30)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextColor3 = DefaultStyle.TextColor
+	titleLabel.Font = DefaultStyle.Font
+	titleLabel.TextSize = 16
+	titleLabel.Parent = window
+
+	return window
 end
 
-function FastyUI:Window(title, size, position)
-    local window = {
-        Title = title,
-        Size = size,
-        Position = position or UDim2.new(0.5, -size.X.Offset/2, 0.5, -size.Y.Offset/2),
-        Tabs = {},
-        Elements = {}
-    }
-    
-    -- Создаем окно
-    window.MainFrame = CreateFrame(self.ScreenGui, size, window.Position)
-    window.MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    
-    -- Заголовок окна
-    window.Header = CreateFrame(window.MainFrame, UDim2.new(1, 0, 0, 30), UDim2.new(0, 0, 0, 0), Colors.Header)
-    window.TitleLabel = CreateLabel(window.Header, title, UDim2.new(0, 200, 1, 0), UDim2.new(0, 10, 0, 0))
-    window.TitleLabel.Font = Enum.Font.GothamBold
-    
-    -- Перетаскивание окна
-    local dragging
-    local dragInput
-    local dragStart
-    local startPos
-    
-    local function update(input)
-        local delta = input.Position - dragStart
-        window.MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-    
-    window.Header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = window.MainFrame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    window.Header.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
-    
-    -- Закрытие окна
-    window.CloseButton = Instance.new("TextButton")
-    window.CloseButton.Size = UDim2.new(0, 30, 1, 0)
-    window.CloseButton.Position = UDim2.new(1, -30, 0, 0)
-    window.CloseButton.BackgroundColor3 = Colors.Header
-    window.CloseButton.BorderSizePixel = 0
-    window.CloseButton.Text = "X"
-    window.CloseButton.TextColor3 = Colors.Text
-    window.CloseButton.Font = Enum.Font.GothamBold
-    window.CloseButton.TextSize = 14
-    window.CloseButton.Parent = window.Header
-    
-    window.CloseButton.MouseButton1Click:Connect(function()
-        window.MainFrame:Destroy()
-        for i, w in ipairs(self.Windows) do
-            if w == window then
-                table.remove(self.Windows, i)
-                break
-            end
-        end
-    end)
-    
-    -- Вкладки
-    window.TabButtons = CreateFrame(window.MainFrame, UDim2.new(0, 120, 1, -30), UDim2.new(0, 0, 0, 30), Colors.TabBar)
-    window.TabContainer = CreateFrame(window.MainFrame, UDim2.new(1, -120, 1, -30), UDim2.new(0, 120, 0, 30))
-    window.TabContainer.BackgroundTransparency = 1
-    
-    table.insert(self.Windows, window)
-    return window
+-- Создание кнопки
+function FastyUi:CreateButton(parent, text, size, callback)
+	local button = Instance.new("TextButton")
+	button.Size = size or UDim2.new(0, 150, 0, 40)
+	button.Position = UDim2.new(0, 10, 0, 40)
+	button.BackgroundColor3 = DefaultStyle.AccentColor
+	button.TextColor3 = DefaultStyle.TextColor
+	button.Text = text or "Button"
+	button.Font = DefaultStyle.Font
+	button.TextSize = 14
+	button.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = DefaultStyle.CornerRadius
+	corner.Parent = button
+
+	-- Анимация при наведении
+	button.MouseEnter:Connect(function()
+		createTween(button, {BackgroundColor3 = DefaultStyle.AccentColor:Lerp(Color3.new(1, 1, 1), 0.2)}, DefaultStyle.AnimationSpeed)
+	end)
+	button.MouseLeave:Connect(function()
+		createTween(button, {BackgroundColor3 = DefaultStyle.AccentColor}, DefaultStyle.AnimationSpeed)
+	end)
+
+	-- Callback при нажатии
+	if callback then
+		button.MouseButton1Click:Connect(callback)
+	end
+
+	return button
 end
 
-function FastyUI:Tab(window, name)
-    local tab = {
-        Name = name,
-        Elements = {}
-    }
-    
-    -- Кнопка вкладки
-    tab.Button = Instance.new("TextButton")
-    tab.Button.Size = UDim2.new(1, -10, 0, 40)
-    tab.Button.Position = UDim2.new(0, 5, 0, #window.Tabs * 40 + 5)
-    tab.Button.BackgroundColor3 = #window.Tabs == 0 and Colors.ActiveTab or Colors.TabBar
-    tab.Button.BorderSizePixel = 0
-    tab.Button.Text = name
-    tab.Button.TextColor3 = Colors.Text
-    tab.Button.Font = Enum.Font.GothamBold
-    tab.Button.TextSize = 12
-    tab.Button.Parent = window.TabButtons
-    
-    -- Контейнер вкладки
-    tab.Container = Instance.new("ScrollingFrame")
-    tab.Container.Size = UDim2.new(1, -20, 1, -20)
-    tab.Container.Position = UDim2.new(0, 10, 0, 10)
-    tab.Container.BackgroundTransparency = 1
-    tab.Container.BorderSizePixel = 0
-    tab.Container.ScrollBarThickness = 3
-    tab.Container.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
-    tab.Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    tab.Container.CanvasSize = UDim2.new(0, 0, 0, 0)
-    tab.Container.Visible = #window.Tabs == 0
-    tab.Container.Parent = window.TabContainer
-    
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Padding = UDim.new(0, 5)
-    UIListLayout.Parent = tab.Container
-    
-    -- Обработка клика
-    tab.Button.MouseButton1Click:Connect(function()
-        for _, t in ipairs(window.Tabs) do
-            t.Container.Visible = false
-            TweenService:Create(t.Button, TweenInfo.Fast, {BackgroundColor3 = Colors.TabBar}):Play()
-        end
-        tab.Container.Visible = true
-        TweenService:Create(tab.Button, TweenInfo.Fast, {BackgroundColor3 = Colors.ActiveTab}):Play()
-    end)
-    
-    table.insert(window.Tabs, tab)
-    return tab
+-- Создание слайдера
+function FastyUi:CreateSlider(parent, text, min, max, default, callback)
+	local slider = Instance.new("Frame")
+	slider.Size = UDim2.new(0, 200, 0, 40)
+	slider.BackgroundColor3 = DefaultStyle.BackgroundColor
+	slider.BorderSizePixel = 0
+	slider.Parent = parent
+
+	local track = Instance.new("Frame")
+	track.Size = UDim2.new(1, -20, 0, 6)
+	track.Position = UDim2.new(0, 10, 0.5, -3)
+	track.BackgroundColor3 = DefaultStyle.AccentColor:Lerp(Color3.new(0, 0, 0), 0.5)
+	track.Parent = slider
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+	fill.BackgroundColor3 = DefaultStyle.AccentColor
+	fill.Parent = track
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = track
+	corner:Clone().Parent = fill
+
+	local label = Instance.new("TextLabel")
+	label.Text = text .. ": " .. tostring(default)
+	label.Size = UDim2.new(1, 0, 0, 20)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = DefaultStyle.TextColor
+	label.Font = DefaultStyle.Font
+	label.TextSize = 12
+	label.Parent = slider
+
+	-- Логика слайдера
+	local dragging = false
+	track.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+		end
+	end)
+
+	track.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local mouseX = input.Position.X
+			local trackX = track.AbsolutePosition.X
+			local trackWidth = track.AbsoluteSize.X
+			local relative = math.clamp((mouseX - trackX) / trackWidth, 0, 1)
+			local value = min + (max - min) * relative
+			fill.Size = UDim2.new(relative, 0, 1, 0)
+			label.Text = text .. ": " .. math.floor(value)
+			if callback then
+				callback(value)
+			end
+		end
+	end)
+
+	return slider
 end
 
-function FastyUI:Label(tab, text)
-    local label = CreateLabel(tab.Container, text, UDim2.new(1, -10, 0, 20), UDim2.new(0, 0, 0, 0))
-    table.insert(tab.Elements, label)
-    return label
+-- Создание метки (Label)
+function FastyUi:CreateLabel(parent, text)
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0, 200, 0, 30)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = DefaultStyle.TextColor
+	label.Text = text or "Label"
+	label.Font = DefaultStyle.Font
+	label.TextSize = 14
+	label.Parent = parent
+	return label
 end
 
-function FastyUI:Button(tab, text, callback)
-    local button = {
-        Text = text,
-        Callback = callback
-    }
-    
-    button.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 30), UDim2.new(0, 0, 0, 0), Colors.Button)
-    button.Label = CreateLabel(button.Frame, text, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0))
-    button.Label.TextXAlignment = Enum.TextXAlignment.Center
-    
-    -- Анимации кнопки
-    button.Frame.MouseEnter:Connect(function()
-        TweenService:Create(button.Frame, TweenInfo.Fast, {BackgroundColor3 = Colors.ButtonHover}):Play()
-    end)
-    
-    button.Frame.MouseLeave:Connect(function()
-        TweenService:Create(button.Frame, TweenInfo.Fast, {BackgroundColor3 = Colors.Button}):Play()
-    end)
-    
-    button.Frame.MouseButton1Click:Connect(function()
-        if callback then callback() end
-    end)
-    
-    table.insert(tab.Elements, button)
-    return button
+-- Создание вкладки (Tab)
+function FastyUi:CreateTab(parent, tabs)
+	local tabContainer = Instance.new("Frame")
+	tabContainer.Size = UDim2.new(1, 0, 0, 40)
+	tabContainer.BackgroundTransparency = 1
+	tabContainer.Parent = parent
+
+	local content = Instance.new("Frame")
+	content.Size = UDim2.new(1, 0, 1, -40)
+	content.Position = UDim2.new(0, 0, 0, 40)
+	content.BackgroundTransparency = 1
+	content.Parent = parent
+
+	local currentTab = nil
+	for i, tab in ipairs(tabs) do
+		local button = self:CreateButton(tabContainer, tab.name, UDim2.new(1/#tabs, 0, 0, 40), function()
+			if currentTab then
+				currentTab.Visible = false
+			end
+			tab.content.Visible = true
+			currentTab = tab.content
+		end)
+		button.Position = UDim2.new((i-1)/#tabs, 0, 0, 0)
+		tab.content.Parent = content
+		tab.content.Visible = (i == 1)
+		if i == 1 then
+			currentTab = tab.content
+		end
+	end
+
+	return content
 end
 
-function FastyUI:Toggle(tab, text, default, callback)
-    local toggle = {
-        Value = default or false,
-        Callback = callback
-    }
-    
-    toggle.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 30), UDim2.new(0, 0, 0, 0))
-    toggle.Frame.BackgroundTransparency = 1
-    
-    toggle.Label = CreateLabel(toggle.Frame, text, UDim2.new(0, 200, 1, 0), UDim2.new(0, 0, 0, 0))
-    
-    toggle.Button = CreateFrame(toggle.Frame, UDim2.new(0, 50, 0, 20), UDim2.new(1, -50, 0.5, -10), toggle.Value and Colors.ToggleOn or Colors.ToggleOff)
-    toggle.Indicator = CreateFrame(toggle.Button, UDim2.new(0, 16, 1, -4), toggle.Value and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2), Color3.new(1, 1, 1))
-    
-    -- Обработка клика
-    toggle.Button.MouseButton1Click:Connect(function()
-        toggle.Value = not toggle.Value
-        TweenService:Create(toggle.Button, TweenInfo.Fast, {
-            BackgroundColor3 = toggle.Value and Colors.ToggleOn or Colors.ToggleOff
-        }):Play()
-        
-        local newPos = toggle.Value and UDim2.new(1, -20, 0, 2) or UDim2.new(0, 2, 0, 2)
-        TweenService:Create(toggle.Indicator, TweenInfo.Fast, {Position = newPos}):Play()
-        
-        if callback then callback(toggle.Value) end
-    end)
-    
-    table.insert(tab.Elements, toggle)
-    return toggle
+-- Создание выпадающего списка (DropDown)
+function FastyUi:CreateDropDown(parent, text, options, callback)
+	local dropdown = Instance.new("Frame")
+	dropdown.Size = UDim2.new(0, 150, 0, 30)
+	dropdown.BackgroundColor3 = DefaultStyle.BackgroundColor
+	dropdown.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = DefaultStyle.CornerRadius
+	corner.Parent = dropdown
+
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, 0, 1, 0)
+	button.BackgroundTransparency = 1
+	button.TextColor3 = DefaultStyle.TextColor
+	button.Text = text or "Select"
+	button.Font = DefaultStyle.Font
+	button.TextSize = 14
+	button.Parent = dropdown
+
+	local list = Instance.new("Frame")
+	list.Size = UDim2.new(1, 0, 0, 0)
+	list.Position = UDim2.new(0, 0, 1, 0)
+	list.BackgroundColor3 = DefaultStyle.BackgroundColor
+	list.ClipsDescendants = true
+	list.Visible = false
+	list.Parent = dropdown
+
+	local cornerList = Instance.new("UICorner")
+	cornerList.CornerRadius = DefaultStyle.CornerRadius
+	cornerList.Parent = list
+
+	local uiListLayout = Instance.new("UIListLayout")
+	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	uiListLayout.Parent = list
+
+	-- Открытие/закрытие списка
+	button.MouseButton1Click:Connect(function()
+		list.Visible = not list.Visible
+		local height = #options * 30
+		createTween(list, {Size = list.Visible and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)}, DefaultStyle.AnimationSpeed)
+	end)
+
+	-- Создание опций
+	for i, option in ipairs(options) do
+		local optButton = self:CreateButton(list, option, UDim2.new(1, 0, 0, 30), function()
+			button.Text = option
+			list.Visible = false
+			createTween(list, {Size = UDim2.new(1, 0, 0, 0)}, DefaultStyle.AnimationSpeed)
+			if callback then
+				callback(option)
+			end
+		end)
+	end
+
+	return dropdown
 end
 
-function FastyUI:Slider(tab, text, min, max, default, callback)
-    local slider = {
-        Min = min,
-        Max = max,
-        Value = default or min,
-        Callback = callback
-    }
-    
-    slider.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 50), UDim2.new(0, 0, 0, 0))
-    slider.Frame.BackgroundTransparency = 1
-    
-    slider.Label = CreateLabel(slider.Frame, text, UDim2.new(0, 200, 0, 20), UDim2.new(0, 0, 0, 0))
-    slider.ValueLabel = CreateLabel(slider.Frame, tostring(default), UDim2.new(0, 50, 0, 20), UDim2.new(1, -50, 0, 0))
-    slider.ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    
-    slider.Track = CreateFrame(slider.Frame, UDim2.new(1, 0, 0, 5), UDim2.new(0, 0, 1, -15), Colors.SliderTrack)
-    slider.Fill = CreateFrame(slider.Track, UDim2.new((default - min) / (max - min), 0, 1, 0), UDim2.new(0, 0, 0, 0), Colors.SliderFill)
-    slider.Button = CreateFrame(slider.Track, UDim2.new(0, 10, 0, 15), UDim2.new(slider.Fill.Size.X.Scale, -5, 0, -5), Color3.new(0.9, 0.9, 0.9))
-    slider.Button.ZIndex = 2
-    
-    -- Перетаскивание ползунка
-    local dragging = false
-    
-    slider.Button.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    local function updateSlider(input)
-        if dragging then
-            local pos = UDim2.new(math.clamp((input.Position.X - slider.Track.AbsolutePosition.X) / slider.Track.AbsoluteSize.X, 0, 1), 0, 0, 0)
-            slider.Fill.Size = UDim2.new(pos.X.Scale, 0, 1, 0)
-            slider.Button.Position = UDim2.new(pos.X.Scale, -5, 0, -5)
-            
-            local value = math.floor(min + (max - min) * pos.X.Scale)
-            slider.Value = value
-            slider.ValueLabel.Text = tostring(value)
-            
-            if callback then callback(value) end
-        end
-    end
-    
-    slider.Button.MouseMoved:Connect(updateSlider)
-    UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-            updateSlider(input)
-        end
-    end)
-    
-    table.insert(tab.Elements, slider)
-    return slider
+-- Создание чекбокса
+function FastyUi:CreateCheckBox(parent, text, default, callback)
+	local checkbox = Instance.new("Frame")
+	checkbox.Size = UDim2.new(0, 200, 0, 30)
+	checkbox.BackgroundTransparency = 1
+	checkbox.Parent = parent
+
+	local box = Instance.new("Frame")
+	box.Size = UDim2.new(0, 20, 0, 20)
+	box.BackgroundColor3 = default and DefaultStyle.AccentColor or DefaultStyle.BackgroundColor
+	box.Parent = checkbox
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = box
+
+	local label = Instance.new("TextLabel")
+	label.Text = text or "Checkbox"
+	label.Size = UDim2.new(1, -30, 1, 0)
+	label.Position = UDim2.new(0, 30, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = DefaultStyle.TextColor
+	label.Font = DefaultStyle.Font
+	label.TextSize = 14
+	label.Parent = checkbox
+
+	local checked = default
+	box.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			checked = not checked
+			createTween(box, {BackgroundColor3 = checked and DefaultStyle.AccentColor or DefaultStyle.BackgroundColor}, DefaultStyle.AnimationSpeed)
+			if callback then
+				callback(checked)
+			end
+		end
+	end)
+
+	return checkbox
 end
 
-function FastyUI:Dropdown(tab, text, options, default, callback)
-    local dropdown = {
-        Options = options,
-        Selected = default or options[1],
-        Callback = callback
-    }
-    
-    dropdown.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 30), UDim2.new(0, 0, 0, 0))
-    dropdown.Frame.BackgroundTransparency = 1
-    
-    dropdown.Label = CreateLabel(dropdown.Frame, text, UDim2.new(0, 200, 1, 0), UDim2.new(0, 0, 0, 0))
-    
-    dropdown.Button = CreateFrame(dropdown.Frame, UDim2.new(0, 150, 0, 25), UDim2.new(1, -150, 0.5, -12.5), Colors.Dropdown)
-    dropdown.ButtonLabel = CreateLabel(dropdown.Button, dropdown.Selected, UDim2.new(1, -20, 1, 0), UDim2.new(0, 5, 0, 0))
-    
-    dropdown.Arrow = Instance.new("ImageLabel")
-    dropdown.Arrow.Size = UDim2.new(0, 12, 0, 12)
-    dropdown.Arrow.Position = UDim2.new(1, -15, 0.5, -6)
-    dropdown.Arrow.BackgroundTransparency = 1
-    dropdown.Arrow.Image = "rbxassetid://3926305904"
-    dropdown.Arrow.ImageRectOffset = Vector2.new(364, 364)
-    dropdown.Arrow.ImageRectSize = Vector2.new(36, 36)
-    dropdown.Arrow.Parent = dropdown.Button
-    
-    dropdown.List = CreateFrame(dropdown.Button, UDim2.new(1, 0, 0, 0), UDim2.new(0, 0, 1, 5), Colors.Dropdown)
-    dropdown.List.Visible = false
-    dropdown.List.ZIndex = 100
-    
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Padding = UDim.new(0, 1)
-    UIListLayout.Parent = dropdown.List
-    
-    for i, option in ipairs(options) do
-        local optionButton = CreateFrame(dropdown.List, UDim2.new(1, -5, 0, 25), UDim2.new(0, 2.5, 0, (i-1)*26), Colors.Dropdown)
-        optionButton.ZIndex = 101
-        
-        local optionLabel = CreateLabel(optionButton, option, UDim2.new(1, -10, 1, 0), UDim2.new(0, 5, 0, 0))
-        
-        optionButton.MouseEnter:Connect(function()
-            TweenService:Create(optionButton, TweenInfo.Fast, {BackgroundColor3 = Colors.DropdownHover}):Play()
-        end)
-        
-        optionButton.MouseLeave:Connect(function()
-            TweenService:Create(optionButton, TweenInfo.Fast, {BackgroundColor3 = Colors.Dropdown}):Play()
-        end)
-        
-        optionButton.MouseButton1Click:Connect(function()
-            dropdown.Selected = option
-            dropdown.ButtonLabel.Text = option
-            dropdown.List.Visible = false
-            TweenService:Create(dropdown.Arrow, TweenInfo.Fast, {Rotation = 0}):Play()
-            
-            if callback then callback(option) end
-        end)
-    end
-    
-    dropdown.Button.MouseButton1Click:Connect(function()
-        dropdown.List.Visible = not dropdown.List.Visible
-        if dropdown.List.Visible then
-            TweenService:Create(dropdown.Arrow, TweenInfo.Fast, {Rotation = 180}):Play()
-            TweenService:Create(dropdown.List, TweenInfo.Fast, {
-                Size = UDim2.new(1, 0, 0, math.min(#options * 26, 130))
-            }):Play()
-        else
-            TweenService:Create(dropdown.Arrow, TweenInfo.Fast, {Rotation = 0}):Play()
-            TweenService:Create(dropdown.List, TweenInfo.Fast, {Size = UDim2.new(1, 0, 0, 0)}):Play()
-        end
-    end)
-    
-    local function closeDropdown(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if not dropdown.List:IsDescendantOf(game) then return end
-            
-            local mousePos = input.Position
-            local framePos = dropdown.List.AbsolutePosition
-            local frameSize = dropdown.List.AbsoluteSize
-            
-            if mousePos.X < framePos.X or mousePos.X > framePos.X + frameSize.X or
-               mousePos.Y < framePos.Y or mousePos.Y > framePos.Y + frameSize.Y then
-                dropdown.List.Visible = false
-                TweenService:Create(dropdown.Arrow, TweenInfo.Fast, {Rotation = 0}):Play()
-                TweenService:Create(dropdown.List, TweenInfo.Fast, {Size = UDim2.new(1, 0, 0, 0)}):Play()
-            end
-        end
-    end
-    
-    UserInputService.InputBegan:Connect(closeDropdown)
-    
-    table.insert(tab.Elements, dropdown)
-    return dropdown
+-- Создание переключателя (Toggle)
+function FastyUi:CreateToggle(parent, text, default, callback)
+	local toggle = Instance.new("Frame")
+	toggle.Size = UDim2.new(0, 60, 0, 30)
+	toggle.BackgroundColor3 = DefaultStyle.BackgroundColor
+	toggle.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 15)
+	corner.Parent = toggle
+
+	local knob = Instance.new("Frame")
+	knob.Size = UDim2.new(0, 24, 0, 24)
+	knob.Position = default and UDim2.new(1, -28, 0, 3) or UDim2.new(0, 4, 0, 3)
+	knob.BackgroundColor3 = DefaultStyle.AccentColor
+	knob.Parent = toggle
+
+	local cornerKnob = Instance.new("UICorner")
+	cornerKnob.CornerRadius = UDim.new(0, 12)
+	cornerKnob.Parent = knob
+
+	local label = Instance.new("TextLabel")
+	label.Text = text or "Toggle"
+	label.Size = UDim2.new(0, 100, 1, 0)
+	label.Position = UDim2.new(1, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = DefaultStyle.TextColor
+	label.Font = DefaultStyle.Font
+	label.TextSize = 14
+	label.Parent = toggle
+
+	local enabled = default
+	toggle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			enabled = not enabled
+			createTween(knob, {Position = enabled and UDim2.new(1, -28, 0, 3) or UDim2.new(0, 4, 0, 3)}, DefaultStyle.AnimationSpeed)
+			createTween(toggle, {BackgroundColor3 = enabled and DefaultStyle.AccentColor:Lerp(Color3.new(0, 0, 0), 0.5) or DefaultStyle.BackgroundColor}, DefaultStyle.AnimationSpeed)
+			if callback then
+				callback(enabled)
+			end
+		end
+	end)
+
+	return toggle
 end
 
-function FastyUI:Bind(tab, text, default, callback)
-    local bind = {
-        Key = default or Enum.KeyCode.Unknown,
-        Listening = false,
-        Callback = callback
-    }
-    
-    bind.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 30), UDim2.new(0, 0, 0, 0))
-    bind.Frame.BackgroundTransparency = 1
-    
-    bind.Label = CreateLabel(bind.Frame, text, UDim2.new(0, 200, 1, 0), UDim2.new(0, 0, 0, 0))
-    
-    bind.Button = CreateFrame(bind.Frame, UDim2.new(0, 100, 0, 25), UDim2.new(1, -100, 0.5, -12.5), Colors.Dropdown)
-    bind.ButtonLabel = CreateLabel(bind.Button, bind.Key.Name, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0))
-    bind.ButtonLabel.TextXAlignment = Enum.TextXAlignment.Center
-    
-    bind.Button.MouseButton1Click:Connect(function()
-        bind.Listening = true
-        bind.ButtonLabel.Text = "..."
-        bind.Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end)
-    
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not bind.Listening or gameProcessed then return end
-        
-        local key
-        if input.UserInputType == Enum.UserInputType.Keyboard then
-            key = input.KeyCode
-        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
-            key = Enum.KeyCode.MouseButton1
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-            key = Enum.KeyCode.MouseButton2
-        elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
-            key = Enum.KeyCode.MouseButton3
-        else
-            return
-        end
-        
-        bind.Key = key
-        bind.ButtonLabel.Text = key.Name
-        bind.Button.BackgroundColor3 = Colors.Dropdown
-        bind.Listening = false
-        
-        if callback then callback(key) end
-    end)
-    
-    table.insert(tab.Elements, bind)
-    return bind
+-- Создание привязки клавиш (Bind)
+function FastyUi:CreateBind(parent, text, defaultKey, callback)
+	local bind = Instance.new("TextButton")
+	bind.Size = UDim2.new(0, 150, 0, 30)
+	bind.BackgroundColor3 = DefaultStyle.BackgroundColor
+	bind.TextColor3 = DefaultStyle.TextColor
+	bind.Text = text .. ": " .. (defaultKey and defaultKey.Name or "None")
+	bind.Font = DefaultStyle.Font
+	bind.TextSize = 14
+	bind.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = DefaultStyle.CornerRadius
+	corner.Parent = bind
+
+	local binding = false
+	bind.MouseButton1Click:Connect(function()
+		bind.Text = text .. ": ..."
+		binding = true
+	end)
+
+	UserInputService.InputBegan:Connect(function(input)
+		if binding and input.UserInputType == Enum.UserInputType.Keyboard then
+			local key = input.KeyCode
+			bind.Text = text .. ": " .. key.Name
+			binding = false
+			if callback then
+				callback(key)
+			end
+		end
+	end)
+
+	return bind
 end
 
-function FastyUI:Checkbox(tab, text, default, callback)
-    local checkbox = {
-        Value = default or false,
-        Callback = callback
-    }
-    
-    checkbox.Frame = CreateFrame(tab.Container, UDim2.new(1, -10, 0, 30), UDim2.new(0, 0, 0, 0))
-    checkbox.Frame.BackgroundTransparency = 1
-    
-    checkbox.Label = CreateLabel(checkbox.Frame, text, UDim2.new(0, 200, 1, 0), UDim2.new(0, 0, 0, 0))
-    
-    checkbox.Button = CreateFrame(checkbox.Frame, UDim2.new(0, 20, 0, 20), UDim2.new(1, -30, 0.5, -10), checkbox.Value and Colors.CheckboxChecked or Colors.Checkbox)
-    checkbox.Button.BorderSizePixel = 1
-    checkbox.Button.BorderColor3 = Color3.fromRGB(80, 80, 80)
-    
-    checkbox.Check = Instance.new("ImageLabel")
-    checkbox.Check.Size = UDim2.new(0, 14, 0, 14)
-    checkbox.Check.Position = UDim2.new(0.5, -7, 0.5, -7)
-    checkbox.Check.BackgroundTransparency = 1
-    checkbox.Check.Image = "rbxassetid://3926305904"
-    checkbox.Check.ImageRectOffset = Vector2.new(100, 100)
-    checkbox.Check.ImageRectSize = Vector2.new(50, 50)
-    checkbox.Check.Visible = checkbox.Value
-    checkbox.Check.Parent = checkbox.Button
-    
-    checkbox.Button.MouseButton1Click:Connect(function()
-        checkbox.Value = not checkbox.Value
-        checkbox.Check.Visible = checkbox.Value
-        TweenService:Create(checkbox.Button, TweenInfo.Fast, {
-            BackgroundColor3 = checkbox.Value and Colors.CheckboxChecked or Colors.Checkbox
-        }):Play()
-        
-        if callback then callback(checkbox.Value) end
-    end)
-    
-    table.insert(tab.Elements, checkbox)
-    return checkbox
-end
-
--- Пример использования:
---[[
-local UI = FastyUI.New("MyUI")
-
-local window = UI:Window("FastyUI Example", UDim2.new(0, 500, 0, 400))
-local mainTab = UI:Tab(window, "Main")
-
-UI:Label(mainTab, "Welcome to FastyUI!")
-
-UI:Button(mainTab, "Click Me", function()
-    print("Button clicked!")
-end)
-
-local toggle = UI:Toggle(mainTab, "Enable Feature", false, function(value)
-    print("Toggle:", value)
-end)
-
-local slider = UI:Slider(mainTab, "Volume", 0, 100, 50, function(value)
-    print("Volume:", value)
-end)
-
-local dropdown = UI:Dropdown(mainTab, "Options", {"Option 1", "Option 2", "Option 3"}, "Option 1", function(option)
-    print("Selected:", option)
-end)
-
-local bind = UI:Bind(mainTab, "Key Bind", Enum.KeyCode.F, function(key)
-    print("Bind pressed:", key.Name)
-end)
-
-local checkbox = UI:Checkbox(mainTab, "Checkbox", true, function(value)
-    print("Checkbox:", value)
-end)
-]]
-
-return FastyUI
+return FastyUi
